@@ -1,0 +1,287 @@
+<!doctype html>
+<html lang="pl">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Znajdź salę — mapa budynku</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#17232e">
+<style>
+:root{--ink:#17232e;--muted:#61717b;--teal:#117d73;--teal2:#0b6d65;--bg:#f4f6f3;--line:#dce2dd;--orange:#f5a000;--pale:#ffedc8}
+*{box-sizing:border-box}body{margin:0;background:#e8ece8;color:var(--ink);font:16px/1.4 system-ui,-apple-system,Segoe UI,Roboto,sans-serif}
+.app{width:min(100%,520px);min-height:100svh;margin:auto;background:var(--bg);position:relative;overflow:hidden;box-shadow:0 0 30px #17232e12;padding-bottom:78px}
+header{padding:28px 26px 12px;display:flex;align-items:center;justify-content:space-between}
+h1{font-size:29px;line-height:1.1;margin:0;font-weight:800;letter-spacing:-.7px}.sub{color:var(--muted);margin-top:5px}
+.iconbtn{border:1px solid var(--line);background:white;border-radius:14px;padding:10px 13px;color:var(--ink);font-size:20px;cursor:pointer}
+.view{display:none;padding:10px 26px 28px;animation:fade .28s ease}.view.active{display:block}
+@keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+.search{display:flex;align-items:center;gap:12px;background:#fff;border:1.5px solid var(--line);border-radius:19px;padding:0 18px;margin:18px 0 16px;height:66px}
+.search span{font-size:25px;color:var(--muted)}.search input{border:0;outline:0;width:100%;font:inherit;font-size:19px;color:var(--ink);background:transparent}
+.filters{display:flex;gap:10px;overflow:auto;padding:2px 0 16px}.chip{border:1.5px solid #ccd4ce;background:white;border-radius:40px;padding:12px 20px;font:inherit;white-space:nowrap;cursor:pointer}.chip.active{background:var(--ink);color:white;border-color:var(--ink)}
+.rooms{display:grid;gap:13px}.room{background:white;border:1.5px solid var(--line);border-radius:22px;padding:18px 16px 18px 20px;display:flex;align-items:center;justify-content:space-between;gap:12px;box-shadow:0 2px 5px #14251a05;animation:fade .3s ease}.room h3{font-size:18px;margin:0 0 1px}.room p{margin:0;color:var(--muted)}.status{font-weight:650;margin-top:7px!important}.free{color:var(--teal)!important}.busy{color:#a44727!important}.status:before{content:"●";font-size:13px;margin-right:7px}.busy:before{content:"■";color:#111}.primary{background:var(--teal);color:white;border:0;border-radius:17px;padding:17px 20px;font:inherit;font-weight:700;cursor:pointer;white-space:nowrap;transition:transform .18s,background .18s}.primary:active{transform:scale(.96)}.primary:hover{background:var(--teal2)}
+nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:min(100%,520px);height:78px;background:#ffffffed;backdrop-filter:blur(12px);border-top:1px solid var(--line);display:flex;justify-content:space-around;align-items:center;z-index:5}
+nav button{border:0;background:none;color:var(--muted);font:inherit;display:grid;justify-items:center;gap:2px;cursor:pointer;font-size:12px;padding:8px 14px}nav button b{font-size:24px;line-height:1}nav button.active{color:var(--teal);font-weight:750}
+.mapwrap{padding:0!important;background:#e5eae5;min-height:calc(100svh - 78px);position:relative}
+.maphead{position:absolute;top:16px;left:18px;z-index:2}.back{background:#fff;border:1px solid #ccd4ce;border-radius:30px;padding:12px 19px;font:inherit;box-shadow:0 2px 8px #17232e12;cursor:pointer}
+.floor{height:64svh;min-height:470px;position:relative;padding:72px 6% 0}
+.roomshape{position:absolute;background:white;border:2px solid #cdd5ce;border-radius:13px;display:flex;align-items:center;justify-content:center;color:#66747b;font-size:15px}
+.r1{left:6%;top:12%;width:39%;height:24%}.r2{right:6%;top:12%;width:43%;height:24%}.r3{left:6%;top:48%;width:29%;height:25%}.target{right:6%;top:48%;width:53%;height:25%;background:var(--pale);border:3px solid var(--orange);color:var(--ink);font-weight:800;font-size:17px}
+.pin{position:absolute;width:19px;height:19px;border-radius:50%;background:var(--orange);border:4px solid var(--ink);top:54%;right:20%}
+.route{position:absolute;inset:0;width:100%;height:100%;pointer-events:none;overflow:visible}.route path{fill:none;stroke:var(--teal);stroke-width:3.5;stroke-linecap:round;stroke-dasharray:1 7;animation:dash 1s linear infinite}
+@keyframes dash{to{stroke-dashoffset:-16}}
+.startdot{position:absolute;left:14%;top:83%;width:23px;height:23px;background:var(--ink);border-radius:50%;box-shadow:0 0 0 0 #17232e55;animation:pulse 1.7s infinite}
+@keyframes pulse{70%{box-shadow:0 0 0 13px #17232e00}100%{box-shadow:0 0 0 0 #17232e00}}
+.directions{background:white;border-radius:30px 30px 0 0;padding:25px 26px 26px;position:relative;margin-top:-1px;box-shadow:0 -5px 20px #17232e08}
+.directions h2{font-size:25px;margin:0}.directions .sub{margin:0 0 18px}
+.step{display:flex;align-items:flex-start;gap:14px;margin:15px 0;font-size:17px}.num{flex:0 0 36px;height:36px;border-radius:50%;background:var(--ink);color:white;display:grid;place-items:center;font-weight:750}
+.wide{width:100%;margin-top:10px;padding:18px}
+.simple{background:white;border:1px solid var(--line);border-radius:20px;padding:20px;margin-top:16px}.simple h3{margin:0 0 6px}.empty{color:var(--muted);padding:25px;text-align:center}
+@media(min-width:600px){body{padding:20px 0}.app{border-radius:24px;min-height:calc(100svh - 40px)}nav{bottom:20px;border-radius:0 0 24px 24px}}
+
+/* Formularz logowania */
+.login-form { display: flex; flex-direction: column; gap: 12px; margin-top: 15px; }
+.form-input { border: 1.5px solid var(--line); border-radius: 17px; padding: 14px 18px; font: inherit; outline: none; width: 100%; transition: border-color 0.2s; }
+.form-input:focus { border-color: var(--teal); }
+.error-text { color: #a44727; font-size: 14px; margin: 0; display: none; font-weight: 500; text-align: center; }
+
+/* Style Chatbota */
+.chat-fab { position: absolute; bottom: 95px; right: 20px; width: 56px; height: 56px; border-radius: 50%; background: var(--teal); color: white; border: none; font-size: 24px; box-shadow: 0 4px 15px #117d7366; cursor: pointer; z-index: 100; display: grid; place-items: center; transition: transform 0.2s; }
+.chat-fab:active { transform: scale(0.95); }
+.chat-window { position: absolute; bottom: 165px; right: 20px; width: calc(100% - 40px); max-width: 360px; height: 450px; background: white; border-radius: 24px; box-shadow: 0 10px 30px #17232e22; z-index: 100; display: none; flex-direction: column; overflow: hidden; border: 1.5px solid var(--line); animation: fade 0.3s ease; }
+.chat-window.active { display: flex; }
+.chat-header { background: var(--teal); color: white; padding: 16px 20px; font-weight: 700; display: flex; justify-content: space-between; align-items: center; }
+.chat-close { background: none; border: none; color: white; font-size: 28px; cursor: pointer; padding: 0; line-height: 1; }
+.chat-messages { flex: 1; overflow-y: auto; padding: 16px; display: flex; flex-direction: column; gap: 12px; background: var(--bg); }
+.msg { max-width: 85%; padding: 12px 16px; border-radius: 18px; font-size: 15px; line-height: 1.4; word-wrap: break-word;}
+.msg.user { align-self: flex-end; background: var(--ink); color: white; border-bottom-right-radius: 4px; }
+.msg.bot { align-self: flex-start; background: white; border: 1px solid var(--line); color: var(--ink); border-bottom-left-radius: 4px; }
+.chat-input { display: flex; padding: 12px; background: white; border-top: 1px solid var(--line); gap: 8px; }
+.chat-input input { flex: 1; border: 1px solid var(--line); border-radius: 20px; padding: 10px 16px; font: inherit; outline: none; transition: border-color 0.2s; }
+.chat-input input:focus { border-color: var(--teal); }
+.chat-send { background: var(--teal); color: white; border: none; width: 42px; height: 42px; border-radius: 50%; cursor: pointer; display: grid; place-items: center; font-size: 18px; padding: 0; }
+.chat-send:disabled { background: var(--muted); cursor: not-allowed; }
+.loading-dots { display: flex; gap: 4px; padding: 4px; }
+.loading-dots span { width: 6px; height: 6px; background: var(--muted); border-radius: 50%; animation: bounce 1.4s infinite ease-in-out both; }
+.loading-dots span:nth-child(1) { animation-delay: -0.32s; }
+.loading-dots span:nth-child(2) { animation-delay: -0.16s; }
+@keyframes bounce { 0%, 80%, 100% { transform: scale(0); } 40% { transform: scale(1); } }
+.chat-actions { display: flex; flex-direction: column; gap: 8px; margin-top: 12px; }
+.chat-action-btn { background: var(--bg); border: 1.5px solid var(--line); border-radius: 12px; padding: 12px 14px; color: var(--ink); text-align: left; font: inherit; font-size: 15px; font-weight: 650; cursor: pointer; transition: background 0.2s, transform 0.1s; }
+.chat-action-btn:active { transform: scale(0.98); }
+.chat-action-btn:hover { background: #e5eae5; }
+</style>
+</head>
+<body>
+<div class="app">
+  <section id="listView" class="view active">
+    <header><div><h1>Znajdź salę</h1><div class="sub">Szybka nawigacja po budynkach</div></div><button class="iconbtn" aria-label="Menu" onclick="toggleMenu()">☰</button></header>
+    <div id="menu" class="simple" style="display:none;margin:4px 0 14px">
+      <button class="chip" onclick="showView('list')">Wyszukaj salę</button>
+      <button class="chip" onclick="showView('schedule')">Plan budynku</button>
+      <button class="chip" onclick="showView('profile')">Profil</button>
+    </div>
+    <label class="search"><span>⌕</span><input id="search" placeholder="Wpisz numer sali..." value="2.14" oninput="renderRooms()"></label>
+    <div class="filters"><button class="chip active" data-filter="all" onclick="setFilter(this)">Wszystkie</button><button class="chip" data-filter="a" onclick="setFilter(this)">Budynek A</button><button class="chip" data-filter="free" onclick="setFilter(this)">Wolne</button></div>
+    <div id="rooms" class="rooms"></div>
+  </section>
+
+  <section id="mapView" class="view mapwrap">
+    <div class="maphead"><button class="back" onclick="showView('list')">← Wróć</button></div>
+    <div class="floor">
+      <div class="roomshape r1">2.10</div><div class="roomshape r2">2.12</div><div class="roomshape r3"></div>
+      <div class="roomshape target" id="mapTargetShape">Sala 2.14</div><div class="pin"></div>
+      <svg class="route" viewBox="0 0 500 550" preserveAspectRatio="none"><path d="M79 430 L79 210 Q79 195 94 195 L380 195 Q390 195 390 210 L390 270"/></svg>
+      <div class="startdot"></div>
+    </div>
+    <div class="directions">
+      <h2 id="destination">Sala 2.14</h2><p class="sub" id="destSub">Budynek A · piętro 2 · ok. 3 min pieszo</p>
+      <div class="step"><span class="num">1</span><span id="step1">Wejdź głównym wejściem budynku A</span></div>
+      <div class="step"><span class="num">2</span><span id="step2">Windą wjedź na piętro 2</span></div>
+      <div class="step"><span class="num">3</span><span id="step3">Skręć w prawo – sala 2.14 jest na końcu korytarza</span></div>
+      <button class="primary wide" onclick="finishRoute()">Zakończ nawigację</button>
+    </div>
+  </section>
+
+  <section id="scheduleView" class="view"><header><div><h1>Plan budynku</h1><div class="sub">Dostępne kondygnacje</div></div></header><div class="simple"><h3>Budynek A</h3><p class="sub">Parter · Piętro 1 · Piętro 2</p><button class="primary" onclick="openMap('Sala 2.14')">Otwórz mapę piętra 2</button></div><div class="simple"><h3>Budynek B</h3><p class="sub">Parter · Piętro 1</p></div><div class="simple"><h3>Budynek C</h3><p class="sub">Parter</p></div></section>
+  <section id="profileView" class="view">
+    <header><div><h1>Profil</h1><div class="sub">Ustawienia aplikacji</div></div></header>
+    <div class="simple">
+      <h3 id="profileName">Gość</h3>
+      <p class="sub" id="profileDesc">Witaj w nawigacji po kampusie.</p>
+      
+      <div id="loginForm" class="login-form">
+        <input type="email" id="emailInput" class="form-input" placeholder="Adres e-mail (np. 109517@student...)">
+        <button class="primary wide" style="margin-top:0" onclick="handleLogin()">Zaloguj się</button>
+        <p id="loginError" class="error-text">Nieprawidłowy adres email lub brak uprawnień.</p>
+      </div>
+
+      <button id="logoutBtn" class="primary wide" style="display:none; margin-top:15px; background:var(--muted)" onclick="handleLogout()">Wyloguj</button>
+    </div>
+    <div class="simple"><h3>Wskazówka</h3><p class="sub">Wyszukaj salę, a następnie wybierz „Prowadź”, aby zobaczyć trasę.</p></div>
+  </section>
+  <section id="startView" class="view"><header><div><h1>Witaj!</h1><div class="sub">Znajdź drogę do swojej sali.</div></div></header><div class="simple"><h3>Dokąd chcesz dotrzeć?</h3><p class="sub">Wyszukaj salę lub przejdź do planu budynku.</p><button class="primary wide" onclick="showView('list')">Znajdź salę</button></div></section>
+  <nav>
+    <button data-tab="start" onclick="showView('start')"><b>⌂</b>Start</button>
+    <button data-tab="list" class="active" onclick="showView('list')"><b>◎</b>Mapa</button>
+    <button data-tab="schedule" onclick="showView('schedule')"><b>📅</b>Plan</button>
+    <button data-tab="profile" onclick="showView('profile')"><b>♙</b>Profil</button>
+  </nav>
+
+  <!-- Elementy Chatbota -->
+  <button class="chat-fab" onclick="toggleChat()" aria-label="Otwórz czat">💬</button>
+  
+  <div id="chatWindow" class="chat-window">
+    <div class="chat-header">
+      <span>Asystent Kampusu</span>
+      <button class="chat-close" onclick="toggleChat()">×</button>
+    </div>
+    <div id="chatMessages" class="chat-messages">
+      <div class="msg bot">Hej! W czym mogę Ci pomóc?</div>
+    </div>
+    <div class="chat-input">
+      <input type="text" id="chatInput" placeholder="Napisz wiadomość..." onkeypress="handleChatKey(event)">
+      <button id="chatSendBtn" class="chat-send" onclick="sendChatMessage()">➤</button>
+    </div>
+  </div>
+
+</div>
+<script>
+const data=[
+ {name:'Sala 2.10',building:'Budynek A',floor:'piętro 2',status:'Wolna do 15:00',free:true},
+ {name:'Sala 2.12',building:'Budynek A',floor:'piętro 2',status:'Zajęta do 11:30',free:false},
+ {name:'Sala 2.14',building:'Budynek A',floor:'piętro 2',status:'Wolna do 12:00',free:true},
+ {name:'Sala 2.15',building:'Budynek A',floor:'piętro 2',status:'Zajęta do 11:45',free:false},
+ {name:'Laboratorium 1.03',building:'Budynek B',floor:'piętro 1',status:'Wolna do 14:00',free:true},
+ {name:'Sala 0.5',building:'Budynek B',floor:'parter',status:'Zajęta do 10:00',free:false},
+ {name:'Aula C',building:'Budynek C',floor:'parter',status:'Zajęta do 13:15',free:false},
+ {name:'Dziekanat',building:'Budynek C',floor:'parter',status:'Otwarte do 15:00',free:true}
+];
+let filter='all';
+function renderRooms(){
+ const q=document.getElementById('search').value.toLowerCase();
+ const items=data.filter(x=>(x.name+' '+x.building).toLowerCase().includes(q)||!q).filter(x=>filter==='all'||(filter==='a'?x.building==='Budynek A':x.free));
+ document.getElementById('rooms').innerHTML=items.length?items.map(x=>`<article class="room"><div><h3>${x.name}</h3><p>${x.building} · ${x.floor}</p><p class="status ${x.free?'free':'busy'}">${x.status}</p></div><button class="primary" onclick="openMap('${x.name}')">Prowadź</button></article>`).join(''):'<div class="empty">Nie znaleziono sali.</div>';
+}
+function setFilter(el){filter=el.dataset.filter;document.querySelectorAll('.chip[data-filter]').forEach(x=>x.classList.toggle('active',x===el));renderRooms()}
+function showView(name){
+ document.querySelectorAll('.view').forEach(v=>v.classList.remove('active'));
+ const id=name==='list'?'listView':name==='map'?'mapView':name+'View';
+ document.getElementById(id).classList.add('active');
+ document.querySelectorAll('nav button').forEach(b=>b.classList.toggle('active',b.dataset.tab===name));
+ document.getElementById('menu').style.display='none';
+}
+function openMap(name){
+ const room = data.find(r => r.name === name);
+ if(room) {
+   document.getElementById('destination').textContent = room.name;
+   document.getElementById('destSub').textContent = `${room.building} · ${room.floor} · ok. 3 min pieszo`;
+   document.getElementById('mapTargetShape').textContent = room.name;
+   document.getElementById('step1').textContent = `Wejdź głównym wejściem do: ${room.building}`;
+   document.getElementById('step2').textContent = `Skieruj się na: ${room.floor}`;
+   document.getElementById('step3').textContent = `Kieruj się korytarzem do: ${room.name}`;
+ }
+ showView('map');
+}
+function finishRoute(){showView('list');document.getElementById('search').value='';renderRooms()}
+function toggleMenu(){const m=document.getElementById('menu');m.style.display=m.style.display==='none'?'flex':'none';m.style.flexWrap='wrap';m.style.gap='8px'}
+
+// --- Logika Logowania ---
+const allowedEmails = ['109517@student.san.edu.pl', '123742@student.san.edu.pl', '119745@student.san.edu.pl'];
+
+function handleLogin() {
+  const email = document.getElementById('emailInput').value.trim().toLowerCase();
+  const err = document.getElementById('loginError');
+  
+  if (allowedEmails.includes(email)) {
+    document.getElementById('profileName').textContent = 'Student SAN';
+    document.getElementById('profileDesc').textContent = email;
+    document.getElementById('loginForm').style.display = 'none';
+    document.getElementById('logoutBtn').style.display = 'block';
+    err.style.display = 'none';
+  } else {
+    err.style.display = 'block';
+  }
+}
+
+function handleLogout() {
+  document.getElementById('profileName').textContent = 'Gość';
+  document.getElementById('profileDesc').textContent = 'Witaj w nawigacji po kampusie.';
+  document.getElementById('loginForm').style.display = 'flex';
+  document.getElementById('logoutBtn').style.display = 'none';
+  document.getElementById('emailInput').value = '';
+  document.getElementById('loginError').style.display = 'none';
+}
+
+// --- Logika Chatbota (Gemini API) ---
+let chatHistory = [];
+
+function toggleChat() {
+  document.getElementById('chatWindow').classList.toggle('active');
+}
+
+function handleChatKey(e) {
+  if (e.key === 'Enter') sendChatMessage();
+}
+
+function addMessageToUI(text, sender) {
+  const msgsDiv = document.getElementById('chatMessages');
+  if (text === 'loading') {
+    msgsDiv.insertAdjacentHTML('beforeend', `<div class="msg bot" id="chatLoading"><div class="loading-dots"><span></span><span></span><span></span></div></div>`);
+  } else {
+    const msgDiv = document.createElement('div');
+    msgDiv.className = `msg ${sender}`;
+    msgDiv.textContent = text;
+    msgsDiv.appendChild(msgDiv);
+  }
+  msgsDiv.scrollTop = msgsDiv.scrollHeight;
+}
+
+function chatNavigate(view) {
+  showView(view);
+  toggleChat();
+}
+
+function sendChatMessage() {
+  const input = document.getElementById('chatInput');
+  const text = input.value.trim();
+  const sendBtn = document.getElementById('chatSendBtn');
+  if (!text) return;
+
+  addMessageToUI(text, 'user');
+  input.value = '';
+  sendBtn.disabled = true;
+
+  addMessageToUI('loading', 'bot');
+
+  // Symulacja "myślenia" i zwrócenie interaktywnych kafelków
+  setTimeout(() => {
+      const loadingEl = document.getElementById('chatLoading');
+      if (loadingEl) loadingEl.remove();
+
+      const msgsDiv = document.getElementById('chatMessages');
+      const msgDiv = document.createElement('div');
+      msgDiv.className = `msg bot`;
+      msgDiv.innerHTML = `Jasne! Wybierz jedną z poniższych opcji, aby kontynuować:
+        <div class="chat-actions">
+          <button class="chat-action-btn" onclick="chatNavigate('list')">🗺️ Nawiguj do sali</button>
+          <button class="chat-action-btn" onclick="chatNavigate('schedule')">📅 Pokaż plan zajęć</button>
+          <button class="chat-action-btn" onclick="chatNavigate('profile')">⚙️ Ustawienia profilu</button>
+        </div>`;
+      msgsDiv.appendChild(msgDiv);
+      msgsDiv.scrollTop = msgsDiv.scrollHeight;
+      
+      sendBtn.disabled = false;
+  }, 700);
+}
+
+// Rejestracja Service Workera (wymagane przez PWABuilder)
+if ('serviceWorker' in navigator) {
+  window.addEventListener('load', () => {
+    navigator.serviceWorker.register('sw.js').catch(err => console.log('SW error:', err));
+  });
+}
+
+renderRooms();
+</script>
+</body>
+</html>
