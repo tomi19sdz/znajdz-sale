@@ -1,5 +1,5 @@
 // Service worker aplikacji „Znajdź salę”: działanie offline (cache-first dla plików aplikacji).
-const CACHE = 'znajdz-sale-v1';
+const CACHE = 'znajdz-sale-v2';
 const ASSETS = [
   './',
   './index.html',
